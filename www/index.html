@@ -1596,9 +1596,8 @@ function saveEntry() {
   state.entries[state.currentAccount].push(entry);
   saveData();
   document.getElementById('amount').value = '';
-  document.getElementById('category').value = '';
   document.getElementById('memo').value = '';
-  setDefaultDate();
+  // カテゴリーと日付は連続入力のために保持
   showToast('保存しました！');
 }
 function renderCalendar() {
