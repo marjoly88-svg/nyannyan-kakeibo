@@ -2035,7 +2035,6 @@ function importData(e) {
   e.target.value = '';
 }
 function formatCurrency(amount, short = false) {
-  if (short && amount >= 10000) return Math.floor(amount / 10000) + '万';
   return amount.toLocaleString() + '円';
 }
 function applyTheme(themeName) {
