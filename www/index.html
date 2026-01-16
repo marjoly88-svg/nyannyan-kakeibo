@@ -1278,6 +1278,7 @@ function loadDataFromObject(data) {
   state.tabNames = data.tabNames || { company: '会社', personal: '家計簿' };
   state.theme = data.theme || 'pink';
   state.savings = data.savings || { company: {}, personal: {} };
+  state.currentAccount = data.currentAccount || 'company';
 }
 
 function loadData() {
@@ -1288,7 +1289,7 @@ function loadData() {
 }
 
 function getDataObject() {
-  return { entries: state.entries, categories: state.categories, tabNames: state.tabNames, theme: state.theme, savings: state.savings };
+  return { entries: state.entries, categories: state.categories, tabNames: state.tabNames, theme: state.theme, savings: state.savings, currentAccount: state.currentAccount };
 }
 
 function saveData() {
@@ -1327,6 +1328,9 @@ async function syncFromCloud() {
     if (doc.exists) {
       loadDataFromObject(doc.data());
       localStorage.setItem('kakeibo_data', JSON.stringify(getDataObject()));
+      document.querySelectorAll('.account-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.account === state.currentAccount);
+      });
       updateCategorySelect();
       updateTabNames();
       applyTheme(state.theme);
@@ -1463,6 +1467,9 @@ function init() {
   loadData();
   setupEventListeners();
   setupCloudEvents();
+  document.querySelectorAll('.account-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.account === state.currentAccount);
+  });
   updateCategorySelect();
   setDefaultDate();
   updateTabNames();
@@ -1477,6 +1484,7 @@ function setupEventListeners() {
       document.querySelectorAll('.account-tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       state.currentAccount = tab.dataset.account;
+      saveData();
       updateCategorySelect();
       renderCalendar();
       renderGraph();
