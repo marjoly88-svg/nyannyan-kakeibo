@@ -2035,7 +2035,11 @@ function importData(e) {
   e.target.value = '';
 }
 function formatCurrency(amount, short = false) {
-  if (short && amount >= 10000) return Math.floor(amount / 10000) + '万';
+  if (short && amount >= 10000) {
+    const man = amount / 10000;
+    // 整数の場合はそのまま、小数の場合は小数点第一位まで
+    return (man % 1 === 0 ? man : man.toFixed(1)) + '万';
+  }
   return amount.toLocaleString() + '円';
 }
 function applyTheme(themeName) {
