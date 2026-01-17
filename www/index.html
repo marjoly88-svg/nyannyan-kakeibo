@@ -423,7 +423,32 @@ body {
 .settings-section .input-row {
   padding: 12px 0;
 }
-.settings-section .input-row input {
+.tab-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.tab-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.tab-setting-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.tab-setting-row:last-child { border-bottom: none; }
+.tab-setting-row.dragging { opacity: 0.5; background: var(--accent-subtle); }
+.tab-setting-row.drag-over { border-top: 2px solid var(--accent); }
+.tab-setting-row .drag-handle { color: var(--fg-muted); cursor: grab; font-size: 16px; }
+.tab-setting-row .drag-handle:active { cursor: grabbing; }
+.tab-setting-row input[type="text"] { flex: 1; }
+.settings-section .input-row input[type="text"] {
   background: var(--bg-muted);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -470,6 +495,21 @@ body {
   flex-shrink: 0;
 }
 .edit-category-btn:hover { background: #fffacd; border-color: #ffd700; }
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 32px;
+  color: var(--fg-muted);
+  cursor: grab;
+  font-size: 16px;
+  user-select: none;
+  flex-shrink: 0;
+}
+.drag-handle:active { cursor: grabbing; }
+.category-edit-item.dragging { opacity: 0.5; background: var(--accent-subtle); }
+.category-edit-item.drag-over { border-top: 2px solid var(--accent); }
 .category-edit-item-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
 .category-edit-item-left span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .add-category { display: flex; gap: 8px; margin-top: 12px; }
@@ -1006,6 +1046,7 @@ body {
     <div class="account-tabs">
       <button class="account-tab active" data-account="company">会社</button>
       <button class="account-tab" data-account="personal">個人</button>
+      <button class="account-tab" data-account="tab3">タブ3</button>
     </div>
     <div class="main-content">
       <div class="screen active" id="input-screen">
@@ -1106,14 +1147,7 @@ body {
         </div>
         <div class="settings-section">
           <h3>タブ名設定</h3>
-          <div class="input-row">
-            <span class="label">タブ1</span>
-            <input type="text" id="tab1-name" placeholder="会社">
-          </div>
-          <div class="input-row">
-            <span class="label">タブ2</span>
-            <input type="text" id="tab2-name" placeholder="個人">
-          </div>
+          <div id="tab-settings-container"></div>
         </div>
         <div class="settings-section">
           <h3>収入カテゴリー</h3>
@@ -1230,6 +1264,11 @@ const DEFAULT_CATEGORIES = {
     income: ['給料', 'その他'],
     expense: ['食費', '外食', '日用品', '交通費', '光熱費', '通信費', '娯楽', '医療費', '教育費', 'その他'],
     savings: ['NISA', '車貯金', '子供用', '旅行用', '緊急用', 'その他']
+  },
+  tab3: {
+    income: ['収入', 'その他'],
+    expense: ['支出', 'その他'],
+    savings: ['貯金', 'その他']
   }
 };
 const COLORS = ['#f5a0a0','#e8b4b8','#a0c4f5','#f5d5a0','#a0f5c4','#d5a0f5','#f5a0d5','#a0f5f5','#c4f5a0','#f5c4a0','#b8e8d4','#e8b8d4','#d4b8e8','#b8d4e8','#e8d4b8'];
@@ -1240,11 +1279,13 @@ let state = {
   graphType: 'income',
   graphDate: new Date(),
   savingsDate: new Date(),
-  entries: { company: [], personal: [] },
+  entries: { company: [], personal: [], tab3: [] },
   categories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)),
-  tabNames: { company: '会社', personal: '家計簿' },
+  tabNames: { company: '会社', personal: '家計簿', tab3: 'タブ3' },
+  tabVisibility: { personal: true, tab3: false },
+  tabOrder: ['company', 'personal', 'tab3'],
   theme: 'pink',
-  savings: { company: {}, personal: {} }
+  savings: { company: {}, personal: {}, tab3: {} }
 };
 const THEMES = {
   pink: {
@@ -1284,7 +1325,8 @@ let currentUser = null;
 let saveTimeout = null;
 
 function loadDataFromObject(data) {
-  state.entries = data.entries || { company: [], personal: [] };
+  state.entries = data.entries || { company: [], personal: [], tab3: [] };
+  if (!state.entries.tab3) state.entries.tab3 = [];
   state.categories = data.categories || JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
   if (!state.categories.company.savings) {
     state.categories.company.savings = DEFAULT_CATEGORIES.company.savings.slice();
@@ -1292,9 +1334,16 @@ function loadDataFromObject(data) {
   if (!state.categories.personal.savings) {
     state.categories.personal.savings = DEFAULT_CATEGORIES.personal.savings.slice();
   }
-  state.tabNames = data.tabNames || { company: '会社', personal: '家計簿' };
+  if (!state.categories.tab3) {
+    state.categories.tab3 = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES.tab3));
+  }
+  state.tabNames = data.tabNames || { company: '会社', personal: '家計簿', tab3: 'タブ3' };
+  if (!state.tabNames.tab3) state.tabNames.tab3 = 'タブ3';
+  state.tabVisibility = data.tabVisibility || { personal: true, tab3: false };
+  state.tabOrder = data.tabOrder || ['company', 'personal', 'tab3'];
   state.theme = data.theme || 'pink';
-  state.savings = data.savings || { company: {}, personal: {} };
+  state.savings = data.savings || { company: {}, personal: {}, tab3: {} };
+  if (!state.savings.tab3) state.savings.tab3 = {};
   state.currentAccount = data.currentAccount || 'company';
 }
 
@@ -1306,7 +1355,7 @@ function loadData() {
 }
 
 function getDataObject() {
-  return { entries: state.entries, categories: state.categories, tabNames: state.tabNames, theme: state.theme, savings: state.savings, currentAccount: state.currentAccount };
+  return { entries: state.entries, categories: state.categories, tabNames: state.tabNames, tabVisibility: state.tabVisibility, tabOrder: state.tabOrder, theme: state.theme, savings: state.savings, currentAccount: state.currentAccount };
 }
 
 function saveData() {
@@ -1593,11 +1642,34 @@ function updateCategorySelect() {
   });
 }
 function updateTabNames() {
-  const tabs = document.querySelectorAll('.account-tab');
-  tabs[0].textContent = state.tabNames.company;
-  tabs[1].textContent = state.tabNames.personal;
-  document.getElementById('tab1-name').value = state.tabNames.company;
-  document.getElementById('tab2-name').value = state.tabNames.personal;
+  const container = document.querySelector('.account-tabs');
+  container.innerHTML = '';
+  state.tabOrder.forEach(tabKey => {
+    const isVisible = tabKey === 'company' || state.tabVisibility[tabKey];
+    if (isVisible) {
+      const btn = document.createElement('button');
+      btn.className = 'account-tab' + (tabKey === state.currentAccount ? ' active' : '');
+      btn.dataset.account = tabKey;
+      btn.textContent = state.tabNames[tabKey];
+      btn.addEventListener('click', () => {
+        state.currentAccount = tabKey;
+        document.querySelectorAll('.account-tab').forEach(t => t.classList.toggle('active', t.dataset.account === tabKey));
+        renderCalendar();
+        renderGraph();
+        renderSavings();
+        updateCategorySelect();
+        saveData();
+      });
+      container.appendChild(btn);
+    }
+  });
+  if (!state.tabVisibility[state.currentAccount] && state.currentAccount !== 'company') {
+    state.currentAccount = state.tabOrder.find(t => t === 'company' || state.tabVisibility[t]) || 'company';
+    document.querySelectorAll('.account-tab').forEach(t => t.classList.toggle('active', t.dataset.account === state.currentAccount));
+    renderCalendar();
+    renderGraph();
+    updateCategorySelect();
+  }
 }
 function setDefaultDate() {
   const today = new Date();
@@ -1976,6 +2048,47 @@ function drawPieChart(data) {
   ctx.fillStyle = '#fff';
   ctx.fill();
 }
+let draggedItem = null;
+function setupCategoryDragDrop() {
+  document.querySelectorAll('.category-edit-item').forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+      draggedItem = item;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      document.querySelectorAll('.category-edit-item').forEach(el => el.classList.remove('drag-over'));
+      draggedItem = null;
+    });
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (draggedItem && draggedItem !== item && draggedItem.dataset.type === item.dataset.type) {
+        e.dataTransfer.dropEffect = 'move';
+        item.classList.add('drag-over');
+      }
+    });
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drag-over');
+    });
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      item.classList.remove('drag-over');
+      if (draggedItem && draggedItem !== item && draggedItem.dataset.type === item.dataset.type) {
+        const type = draggedItem.dataset.type;
+        const fromIdx = parseInt(draggedItem.dataset.index);
+        const toIdx = parseInt(item.dataset.index);
+        const cats = state.categories[state.currentAccount][type];
+        const [moved] = cats.splice(fromIdx, 1);
+        cats.splice(toIdx, 0, moved);
+        saveData();
+        renderSettings();
+        updateCategorySelect();
+        showToast('カテゴリーの順番を変更しました');
+      }
+    });
+  });
+}
 function renderSettings() {
   ['income', 'expense', 'savings'].forEach(type => {
     const container = document.getElementById(`${type}-categories`);
@@ -1984,10 +2097,14 @@ function renderSettings() {
     cats.forEach((cat, idx) => {
       const item = document.createElement('div');
       item.className = 'category-edit-item';
-      item.innerHTML = `<div class="category-edit-item-left"><button class="edit-category-btn" data-type="${type}" data-index="${idx}">⭐</button><span>${cat}</span></div><button class="delete-category-btn" data-type="${type}" data-index="${idx}">×</button>`;
+      item.draggable = true;
+      item.dataset.type = type;
+      item.dataset.index = idx;
+      item.innerHTML = `<div class="category-edit-item-left"><span class="drag-handle">≡</span><button class="edit-category-btn" data-type="${type}" data-index="${idx}">⭐</button><span>${cat}</span></div><button class="delete-category-btn" data-type="${type}" data-index="${idx}">×</button>`;
       container.appendChild(item);
     });
   });
+  setupCategoryDragDrop();
   document.querySelectorAll('.edit-category-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const type = btn.dataset.type;
@@ -2013,23 +2130,88 @@ function renderSettings() {
       updateCategorySelect();
     });
   });
-  document.getElementById('tab1-name').value = state.tabNames.company;
-  document.getElementById('tab2-name').value = state.tabNames.personal;
-  document.getElementById('tab1-name').onchange = (e) => {
-    state.tabNames.company = e.target.value || '会社';
-    saveData();
-    updateTabNames();
-    updateReportTabSelect();
-  };
-  document.getElementById('tab2-name').onchange = (e) => {
-    state.tabNames.personal = e.target.value || '個人';
-    saveData();
-    updateTabNames();
-    updateReportTabSelect();
-  };
+  renderTabSettings();
+}
+function renderTabSettings() {
+  const container = document.getElementById('tab-settings-container');
+  container.innerHTML = '';
+  const defaultNames = { company: '会社', personal: '個人', tab3: 'タブ3' };
+  state.tabOrder.forEach((tabKey, idx) => {
+    const row = document.createElement('div');
+    row.className = 'tab-setting-row';
+    row.draggable = true;
+    row.dataset.tabKey = tabKey;
+    row.dataset.index = idx;
+    const isFirst = tabKey === 'company';
+    row.innerHTML = `
+      <span class="drag-handle">≡</span>
+      ${isFirst ? '<span class="label" style="width:70px;">タブ1</span>' : `<label class="tab-checkbox" style="width:70px;"><input type="checkbox" class="tab-visible-cb" data-tab="${tabKey}" ${state.tabVisibility[tabKey] ? 'checked' : ''}><span class="label">タブ${idx+1}</span></label>`}
+      <input type="text" class="tab-name-input" data-tab="${tabKey}" value="${state.tabNames[tabKey]}" placeholder="${defaultNames[tabKey]}">
+    `;
+    container.appendChild(row);
+  });
+  setupTabSettingsDragDrop();
+  document.querySelectorAll('.tab-name-input').forEach(input => {
+    input.onchange = (e) => {
+      const tabKey = input.dataset.tab;
+      const defaultNames = { company: '会社', personal: '個人', tab3: 'タブ3' };
+      state.tabNames[tabKey] = e.target.value || defaultNames[tabKey];
+      saveData();
+      updateTabNames();
+      updateReportTabSelect();
+    };
+  });
+  document.querySelectorAll('.tab-visible-cb').forEach(cb => {
+    cb.onchange = (e) => {
+      const tabKey = cb.dataset.tab;
+      state.tabVisibility[tabKey] = e.target.checked;
+      saveData();
+      updateTabNames();
+      updateReportTabSelect();
+    };
+  });
+}
+let draggedTabRow = null;
+function setupTabSettingsDragDrop() {
+  document.querySelectorAll('.tab-setting-row').forEach(row => {
+    row.addEventListener('dragstart', (e) => {
+      draggedTabRow = row;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      document.querySelectorAll('.tab-setting-row').forEach(el => el.classList.remove('drag-over'));
+      draggedTabRow = null;
+    });
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (draggedTabRow && draggedTabRow !== row) {
+        e.dataTransfer.dropEffect = 'move';
+        row.classList.add('drag-over');
+      }
+    });
+    row.addEventListener('dragleave', () => {
+      row.classList.remove('drag-over');
+    });
+    row.addEventListener('drop', (e) => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      if (draggedTabRow && draggedTabRow !== row) {
+        const fromIdx = parseInt(draggedTabRow.dataset.index);
+        const toIdx = parseInt(row.dataset.index);
+        const [moved] = state.tabOrder.splice(fromIdx, 1);
+        state.tabOrder.splice(toIdx, 0, moved);
+        saveData();
+        renderTabSettings();
+        updateTabNames();
+        showToast('タブの順番を変更しました');
+      }
+    });
+  });
 }
 function exportData() {
-  const data = JSON.stringify({ entries: state.entries, categories: state.categories, tabNames: state.tabNames, theme: state.theme, savings: state.savings }, null, 2);
+  const data = JSON.stringify({ entries: state.entries, categories: state.categories, tabNames: state.tabNames, tabVisibility: state.tabVisibility, tabOrder: state.tabOrder, theme: state.theme, savings: state.savings }, null, 2);
   const blob = new Blob([data], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2048,10 +2230,16 @@ function importData(e) {
       const data = JSON.parse(event.target.result);
       if (data.entries && data.categories) {
         state.entries = data.entries;
+        if (!state.entries.tab3) state.entries.tab3 = [];
         state.categories = data.categories;
-        state.tabNames = data.tabNames || { company: '会社', personal: '家計簿' };
+        if (!state.categories.tab3) state.categories.tab3 = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES.tab3));
+        state.tabNames = data.tabNames || { company: '会社', personal: '家計簿', tab3: 'タブ3' };
+        if (!state.tabNames.tab3) state.tabNames.tab3 = 'タブ3';
+        state.tabVisibility = data.tabVisibility || { personal: true, tab3: false };
+        state.tabOrder = data.tabOrder || ['company', 'personal', 'tab3'];
         state.theme = data.theme || 'pink';
-        state.savings = data.savings || { company: {}, personal: {} };
+        state.savings = data.savings || { company: {}, personal: {}, tab3: {} };
+        if (!state.savings.tab3) state.savings.tab3 = {};
         saveData();
         updateTabNames();
         applyTheme(state.theme);
@@ -2104,129 +2292,97 @@ function initReportYears() {
 }
 function updateReportTabSelect() {
   const select = document.getElementById('report-tab');
-  select.innerHTML = `
-    <option value="company">${state.tabNames.company}のみ</option>
-    <option value="personal">${state.tabNames.personal}のみ</option>
-    <option value="both">両方</option>
-  `;
+  let options = `<option value="company">${state.tabNames.company}のみ</option>`;
+  if (state.tabVisibility.personal) {
+    options += `<option value="personal">${state.tabNames.personal}のみ</option>`;
+  }
+  if (state.tabVisibility.tab3) {
+    options += `<option value="tab3">${state.tabNames.tab3}のみ</option>`;
+  }
+  const visibleCount = 1 + (state.tabVisibility.personal ? 1 : 0) + (state.tabVisibility.tab3 ? 1 : 0);
+  if (visibleCount > 1) {
+    options += `<option value="all">すべて</option>`;
+  }
+  select.innerHTML = options;
 }
+function generateTabReport(tabKey, tabName, entries, year) {
+  const tabEntries = entries.filter(e => new Date(e.date).getFullYear() === year);
+  const tabIncome = tabEntries.filter(e => e.type === 'income');
+  const tabExpense = tabEntries.filter(e => e.type === 'expense');
+
+  let report = `\n■ ${tabName}\n`;
+  report += `-`.repeat(40) + `\n`;
+
+  report += `\n【収入】\n`;
+  const incomeByCategory = {};
+  tabIncome.forEach(e => {
+    if (!incomeByCategory[e.category]) incomeByCategory[e.category] = 0;
+    incomeByCategory[e.category] += e.amount;
+  });
+  let totalIncome = 0;
+  Object.entries(incomeByCategory).sort((a,b) => b[1] - a[1]).forEach(([cat, amt]) => {
+    report += `  ・${cat}: ¥${amt.toLocaleString()}\n`;
+    totalIncome += amt;
+  });
+  report += `  ────────────────\n`;
+  report += `  収入合計: ¥${totalIncome.toLocaleString()}\n`;
+
+  report += `\n【支出】\n`;
+  const expenseByCategory = {};
+  tabExpense.forEach(e => {
+    if (!expenseByCategory[e.category]) expenseByCategory[e.category] = 0;
+    expenseByCategory[e.category] += e.amount;
+  });
+  let totalExpense = 0;
+  Object.entries(expenseByCategory).sort((a,b) => b[1] - a[1]).forEach(([cat, amt]) => {
+    report += `  ・${cat}: ¥${amt.toLocaleString()}\n`;
+    totalExpense += amt;
+  });
+  report += `  ────────────────\n`;
+  report += `  支出合計: ¥${totalExpense.toLocaleString()}\n`;
+
+  report += `\n【収支】\n`;
+  report += `  ＝ ¥${(totalIncome - totalExpense).toLocaleString()}\n`;
+
+  report += `\n【月別収入推移】\n`;
+  for (let m = 1; m <= 12; m++) {
+    const monthIncome = tabIncome.filter(e => new Date(e.date).getMonth() + 1 === m).reduce((s, e) => s + e.amount, 0);
+    if (monthIncome > 0) {
+      report += `  ${m}月: ¥${monthIncome.toLocaleString()}\n`;
+    }
+  }
+  return report;
+}
+
 function generateReport() {
   const year = parseInt(document.getElementById('report-year').value);
   const tabChoice = document.getElementById('report-tab').value;
-  
+
   let report = `【${year}年 確定申告用 収支レポート】\n`;
   report += `作成日: ${new Date().toLocaleDateString('ja-JP')}\n`;
   report += `\n${'='.repeat(40)}\n`;
-  
-  // 会社タブの出力
-  if (tabChoice === 'company' || tabChoice === 'both') {
-    const companyEntries = state.entries.company.filter(e => new Date(e.date).getFullYear() === year);
-    const companyIncome = companyEntries.filter(e => e.type === 'income');
-    const companyExpense = companyEntries.filter(e => e.type === 'expense');
-    
-    report += `\n■ ${state.tabNames.company}\n`;
-    report += `-`.repeat(40) + `\n`;
-    
-    report += `\n【売上・収入】\n`;
-    const incomeByCategory = {};
-    companyIncome.forEach(e => {
-      if (!incomeByCategory[e.category]) incomeByCategory[e.category] = 0;
-      incomeByCategory[e.category] += e.amount;
-    });
-    let totalIncome = 0;
-    Object.entries(incomeByCategory).sort((a,b) => b[1] - a[1]).forEach(([cat, amt]) => {
-      report += `  ・${cat}: ¥${amt.toLocaleString()}\n`;
-      totalIncome += amt;
-    });
-    report += `  ────────────────\n`;
-    report += `  売上合計: ¥${totalIncome.toLocaleString()}\n`;
-    
-    report += `\n【経費】\n`;
-    const expenseByCategory = {};
-    companyExpense.forEach(e => {
-      if (!expenseByCategory[e.category]) expenseByCategory[e.category] = 0;
-      expenseByCategory[e.category] += e.amount;
-    });
-    let totalExpense = 0;
-    Object.entries(expenseByCategory).sort((a,b) => b[1] - a[1]).forEach(([cat, amt]) => {
-      report += `  ・${cat}: ¥${amt.toLocaleString()}\n`;
-      totalExpense += amt;
-    });
-    report += `  ────────────────\n`;
-    report += `  経費合計: ¥${totalExpense.toLocaleString()}\n`;
-    
-    const profit = totalIncome - totalExpense;
-    report += `\n【所得】\n`;
-    report += `  売上 ¥${totalIncome.toLocaleString()} − 経費 ¥${totalExpense.toLocaleString()}\n`;
-    report += `  ＝ ¥${profit.toLocaleString()}\n`;
-    
-    // 月別推移
-    report += `\n【月別売上推移】\n`;
-    for (let m = 1; m <= 12; m++) {
-      const monthIncome = companyIncome.filter(e => new Date(e.date).getMonth() + 1 === m).reduce((s, e) => s + e.amount, 0);
-      if (monthIncome > 0) {
-        report += `  ${m}月: ¥${monthIncome.toLocaleString()}\n`;
-      }
-    }
+
+  let isFirst = true;
+
+  if (tabChoice === 'company' || tabChoice === 'all') {
+    report += generateTabReport('company', state.tabNames.company, state.entries.company, year);
+    isFirst = false;
   }
-  
-  // 個人タブの出力
-  if (tabChoice === 'personal' || tabChoice === 'both') {
-    if (tabChoice === 'both') {
-      report += `\n${'='.repeat(40)}\n`;
-    }
-    
-    const personalEntries = state.entries.personal.filter(e => new Date(e.date).getFullYear() === year);
-    const personalIncome = personalEntries.filter(e => e.type === 'income');
-    const personalExpense = personalEntries.filter(e => e.type === 'expense');
-    
-    report += `\n■ ${state.tabNames.personal}\n`;
-    report += `-`.repeat(40) + `\n`;
-    
-    report += `\n【収入】\n`;
-    const pIncomeByCategory = {};
-    personalIncome.forEach(e => {
-      if (!pIncomeByCategory[e.category]) pIncomeByCategory[e.category] = 0;
-      pIncomeByCategory[e.category] += e.amount;
-    });
-    let pTotalIncome = 0;
-    Object.entries(pIncomeByCategory).sort((a,b) => b[1] - a[1]).forEach(([cat, amt]) => {
-      report += `  ・${cat}: ¥${amt.toLocaleString()}\n`;
-      pTotalIncome += amt;
-    });
-    report += `  ────────────────\n`;
-    report += `  収入合計: ¥${pTotalIncome.toLocaleString()}\n`;
-    
-    report += `\n【支出】\n`;
-    const pExpenseByCategory = {};
-    personalExpense.forEach(e => {
-      if (!pExpenseByCategory[e.category]) pExpenseByCategory[e.category] = 0;
-      pExpenseByCategory[e.category] += e.amount;
-    });
-    let pTotalExpense = 0;
-    Object.entries(pExpenseByCategory).sort((a,b) => b[1] - a[1]).forEach(([cat, amt]) => {
-      report += `  ・${cat}: ¥${amt.toLocaleString()}\n`;
-      pTotalExpense += amt;
-    });
-    report += `  ────────────────\n`;
-    report += `  支出合計: ¥${pTotalExpense.toLocaleString()}\n`;
-    
-    report += `\n【収支】\n`;
-    report += `  ＝ ¥${(pTotalIncome - pTotalExpense).toLocaleString()}\n`;
-    
-    // 月別推移
-    report += `\n【月別収入推移】\n`;
-    for (let m = 1; m <= 12; m++) {
-      const monthIncome = personalIncome.filter(e => new Date(e.date).getMonth() + 1 === m).reduce((s, e) => s + e.amount, 0);
-      if (monthIncome > 0) {
-        report += `  ${m}月: ¥${monthIncome.toLocaleString()}\n`;
-      }
-    }
+
+  if ((tabChoice === 'personal' || tabChoice === 'all') && state.tabVisibility.personal) {
+    if (!isFirst) report += `\n${'='.repeat(40)}\n`;
+    report += generateTabReport('personal', state.tabNames.personal, state.entries.personal, year);
+    isFirst = false;
   }
-  
+
+  if ((tabChoice === 'tab3' || tabChoice === 'all') && state.tabVisibility.tab3) {
+    if (!isFirst) report += `\n${'='.repeat(40)}\n`;
+    report += generateTabReport('tab3', state.tabNames.tab3, state.entries.tab3, year);
+  }
+
   report += `\n${'='.repeat(40)}\n`;
   report += `\n※このレポートをClaudeに貼り付けて\n  確定申告の相談ができます！\n`;
-  
+
   document.getElementById('report-text').value = report;
   document.getElementById('report-modal').classList.add('show');
 }
