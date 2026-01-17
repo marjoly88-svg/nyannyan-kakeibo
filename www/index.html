@@ -423,7 +423,19 @@ body {
 .settings-section .input-row {
   padding: 12px 0;
 }
-.settings-section .input-row input {
+.tab-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.tab-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.settings-section .input-row input[type="text"] {
   background: var(--bg-muted);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -1021,6 +1033,7 @@ body {
     <div class="account-tabs">
       <button class="account-tab active" data-account="company">会社</button>
       <button class="account-tab" data-account="personal">個人</button>
+      <button class="account-tab" data-account="tab3">タブ3</button>
     </div>
     <div class="main-content">
       <div class="screen active" id="input-screen">
@@ -1126,8 +1139,12 @@ body {
             <input type="text" id="tab1-name" placeholder="会社">
           </div>
           <div class="input-row">
-            <span class="label">タブ2</span>
+            <label class="tab-checkbox"><input type="checkbox" id="tab2-visible" checked><span class="label">タブ2</span></label>
             <input type="text" id="tab2-name" placeholder="個人">
+          </div>
+          <div class="input-row">
+            <label class="tab-checkbox"><input type="checkbox" id="tab3-visible"><span class="label">タブ3</span></label>
+            <input type="text" id="tab3-name" placeholder="タブ3">
           </div>
         </div>
         <div class="settings-section">
@@ -1245,6 +1262,11 @@ const DEFAULT_CATEGORIES = {
     income: ['給料', 'その他'],
     expense: ['食費', '外食', '日用品', '交通費', '光熱費', '通信費', '娯楽', '医療費', '教育費', 'その他'],
     savings: ['NISA', '車貯金', '子供用', '旅行用', '緊急用', 'その他']
+  },
+  tab3: {
+    income: ['収入', 'その他'],
+    expense: ['支出', 'その他'],
+    savings: ['貯金', 'その他']
   }
 };
 const COLORS = ['#f5a0a0','#e8b4b8','#a0c4f5','#f5d5a0','#a0f5c4','#d5a0f5','#f5a0d5','#a0f5f5','#c4f5a0','#f5c4a0','#b8e8d4','#e8b8d4','#d4b8e8','#b8d4e8','#e8d4b8'];
@@ -1255,11 +1277,12 @@ let state = {
   graphType: 'income',
   graphDate: new Date(),
   savingsDate: new Date(),
-  entries: { company: [], personal: [] },
+  entries: { company: [], personal: [], tab3: [] },
   categories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)),
-  tabNames: { company: '会社', personal: '家計簿' },
+  tabNames: { company: '会社', personal: '家計簿', tab3: 'タブ3' },
+  tabVisibility: { personal: true, tab3: false },
   theme: 'pink',
-  savings: { company: {}, personal: {} }
+  savings: { company: {}, personal: {}, tab3: {} }
 };
 const THEMES = {
   pink: {
@@ -1299,7 +1322,8 @@ let currentUser = null;
 let saveTimeout = null;
 
 function loadDataFromObject(data) {
-  state.entries = data.entries || { company: [], personal: [] };
+  state.entries = data.entries || { company: [], personal: [], tab3: [] };
+  if (!state.entries.tab3) state.entries.tab3 = [];
   state.categories = data.categories || JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
   if (!state.categories.company.savings) {
     state.categories.company.savings = DEFAULT_CATEGORIES.company.savings.slice();
@@ -1307,9 +1331,15 @@ function loadDataFromObject(data) {
   if (!state.categories.personal.savings) {
     state.categories.personal.savings = DEFAULT_CATEGORIES.personal.savings.slice();
   }
-  state.tabNames = data.tabNames || { company: '会社', personal: '家計簿' };
+  if (!state.categories.tab3) {
+    state.categories.tab3 = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES.tab3));
+  }
+  state.tabNames = data.tabNames || { company: '会社', personal: '家計簿', tab3: 'タブ3' };
+  if (!state.tabNames.tab3) state.tabNames.tab3 = 'タブ3';
+  state.tabVisibility = data.tabVisibility || { personal: true, tab3: false };
   state.theme = data.theme || 'pink';
-  state.savings = data.savings || { company: {}, personal: {} };
+  state.savings = data.savings || { company: {}, personal: {}, tab3: {} };
+  if (!state.savings.tab3) state.savings.tab3 = {};
   state.currentAccount = data.currentAccount || 'company';
 }
 
@@ -1321,7 +1351,7 @@ function loadData() {
 }
 
 function getDataObject() {
-  return { entries: state.entries, categories: state.categories, tabNames: state.tabNames, theme: state.theme, savings: state.savings, currentAccount: state.currentAccount };
+  return { entries: state.entries, categories: state.categories, tabNames: state.tabNames, tabVisibility: state.tabVisibility, theme: state.theme, savings: state.savings, currentAccount: state.currentAccount };
 }
 
 function saveData() {
@@ -1611,8 +1641,21 @@ function updateTabNames() {
   const tabs = document.querySelectorAll('.account-tab');
   tabs[0].textContent = state.tabNames.company;
   tabs[1].textContent = state.tabNames.personal;
+  tabs[2].textContent = state.tabNames.tab3;
+  tabs[1].style.display = state.tabVisibility.personal ? '' : 'none';
+  tabs[2].style.display = state.tabVisibility.tab3 ? '' : 'none';
   document.getElementById('tab1-name').value = state.tabNames.company;
   document.getElementById('tab2-name').value = state.tabNames.personal;
+  document.getElementById('tab3-name').value = state.tabNames.tab3;
+  document.getElementById('tab2-visible').checked = state.tabVisibility.personal;
+  document.getElementById('tab3-visible').checked = state.tabVisibility.tab3;
+  if (!state.tabVisibility[state.currentAccount] && state.currentAccount !== 'company') {
+    state.currentAccount = 'company';
+    tabs.forEach(t => t.classList.toggle('active', t.dataset.account === 'company'));
+    renderCalendar();
+    renderGraph();
+    updateCategorySelect();
+  }
 }
 function setDefaultDate() {
   const today = new Date();
@@ -2075,6 +2118,9 @@ function renderSettings() {
   });
   document.getElementById('tab1-name').value = state.tabNames.company;
   document.getElementById('tab2-name').value = state.tabNames.personal;
+  document.getElementById('tab3-name').value = state.tabNames.tab3;
+  document.getElementById('tab2-visible').checked = state.tabVisibility.personal;
+  document.getElementById('tab3-visible').checked = state.tabVisibility.tab3;
   document.getElementById('tab1-name').onchange = (e) => {
     state.tabNames.company = e.target.value || '会社';
     saveData();
@@ -2087,9 +2133,27 @@ function renderSettings() {
     updateTabNames();
     updateReportTabSelect();
   };
+  document.getElementById('tab3-name').onchange = (e) => {
+    state.tabNames.tab3 = e.target.value || 'タブ3';
+    saveData();
+    updateTabNames();
+    updateReportTabSelect();
+  };
+  document.getElementById('tab2-visible').onchange = (e) => {
+    state.tabVisibility.personal = e.target.checked;
+    saveData();
+    updateTabNames();
+    updateReportTabSelect();
+  };
+  document.getElementById('tab3-visible').onchange = (e) => {
+    state.tabVisibility.tab3 = e.target.checked;
+    saveData();
+    updateTabNames();
+    updateReportTabSelect();
+  };
 }
 function exportData() {
-  const data = JSON.stringify({ entries: state.entries, categories: state.categories, tabNames: state.tabNames, theme: state.theme, savings: state.savings }, null, 2);
+  const data = JSON.stringify({ entries: state.entries, categories: state.categories, tabNames: state.tabNames, tabVisibility: state.tabVisibility, theme: state.theme, savings: state.savings }, null, 2);
   const blob = new Blob([data], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2108,10 +2172,15 @@ function importData(e) {
       const data = JSON.parse(event.target.result);
       if (data.entries && data.categories) {
         state.entries = data.entries;
+        if (!state.entries.tab3) state.entries.tab3 = [];
         state.categories = data.categories;
-        state.tabNames = data.tabNames || { company: '会社', personal: '家計簿' };
+        if (!state.categories.tab3) state.categories.tab3 = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES.tab3));
+        state.tabNames = data.tabNames || { company: '会社', personal: '家計簿', tab3: 'タブ3' };
+        if (!state.tabNames.tab3) state.tabNames.tab3 = 'タブ3';
+        state.tabVisibility = data.tabVisibility || { personal: true, tab3: false };
         state.theme = data.theme || 'pink';
-        state.savings = data.savings || { company: {}, personal: {} };
+        state.savings = data.savings || { company: {}, personal: {}, tab3: {} };
+        if (!state.savings.tab3) state.savings.tab3 = {};
         saveData();
         updateTabNames();
         applyTheme(state.theme);
@@ -2164,129 +2233,97 @@ function initReportYears() {
 }
 function updateReportTabSelect() {
   const select = document.getElementById('report-tab');
-  select.innerHTML = `
-    <option value="company">${state.tabNames.company}のみ</option>
-    <option value="personal">${state.tabNames.personal}のみ</option>
-    <option value="both">両方</option>
-  `;
+  let options = `<option value="company">${state.tabNames.company}のみ</option>`;
+  if (state.tabVisibility.personal) {
+    options += `<option value="personal">${state.tabNames.personal}のみ</option>`;
+  }
+  if (state.tabVisibility.tab3) {
+    options += `<option value="tab3">${state.tabNames.tab3}のみ</option>`;
+  }
+  const visibleCount = 1 + (state.tabVisibility.personal ? 1 : 0) + (state.tabVisibility.tab3 ? 1 : 0);
+  if (visibleCount > 1) {
+    options += `<option value="all">すべて</option>`;
+  }
+  select.innerHTML = options;
 }
+function generateTabReport(tabKey, tabName, entries, year) {
+  const tabEntries = entries.filter(e => new Date(e.date).getFullYear() === year);
+  const tabIncome = tabEntries.filter(e => e.type === 'income');
+  const tabExpense = tabEntries.filter(e => e.type === 'expense');
+
+  let report = `\n■ ${tabName}\n`;
+  report += `-`.repeat(40) + `\n`;
+
+  report += `\n【収入】\n`;
+  const incomeByCategory = {};
+  tabIncome.forEach(e => {
+    if (!incomeByCategory[e.category]) incomeByCategory[e.category] = 0;
+    incomeByCategory[e.category] += e.amount;
+  });
+  let totalIncome = 0;
+  Object.entries(incomeByCategory).sort((a,b) => b[1] - a[1]).forEach(([cat, amt]) => {
+    report += `  ・${cat}: ¥${amt.toLocaleString()}\n`;
+    totalIncome += amt;
+  });
+  report += `  ────────────────\n`;
+  report += `  収入合計: ¥${totalIncome.toLocaleString()}\n`;
+
+  report += `\n【支出】\n`;
+  const expenseByCategory = {};
+  tabExpense.forEach(e => {
+    if (!expenseByCategory[e.category]) expenseByCategory[e.category] = 0;
+    expenseByCategory[e.category] += e.amount;
+  });
+  let totalExpense = 0;
+  Object.entries(expenseByCategory).sort((a,b) => b[1] - a[1]).forEach(([cat, amt]) => {
+    report += `  ・${cat}: ¥${amt.toLocaleString()}\n`;
+    totalExpense += amt;
+  });
+  report += `  ────────────────\n`;
+  report += `  支出合計: ¥${totalExpense.toLocaleString()}\n`;
+
+  report += `\n【収支】\n`;
+  report += `  ＝ ¥${(totalIncome - totalExpense).toLocaleString()}\n`;
+
+  report += `\n【月別収入推移】\n`;
+  for (let m = 1; m <= 12; m++) {
+    const monthIncome = tabIncome.filter(e => new Date(e.date).getMonth() + 1 === m).reduce((s, e) => s + e.amount, 0);
+    if (monthIncome > 0) {
+      report += `  ${m}月: ¥${monthIncome.toLocaleString()}\n`;
+    }
+  }
+  return report;
+}
+
 function generateReport() {
   const year = parseInt(document.getElementById('report-year').value);
   const tabChoice = document.getElementById('report-tab').value;
-  
+
   let report = `【${year}年 確定申告用 収支レポート】\n`;
   report += `作成日: ${new Date().toLocaleDateString('ja-JP')}\n`;
   report += `\n${'='.repeat(40)}\n`;
-  
-  // 会社タブの出力
-  if (tabChoice === 'company' || tabChoice === 'both') {
-    const companyEntries = state.entries.company.filter(e => new Date(e.date).getFullYear() === year);
-    const companyIncome = companyEntries.filter(e => e.type === 'income');
-    const companyExpense = companyEntries.filter(e => e.type === 'expense');
-    
-    report += `\n■ ${state.tabNames.company}\n`;
-    report += `-`.repeat(40) + `\n`;
-    
-    report += `\n【売上・収入】\n`;
-    const incomeByCategory = {};
-    companyIncome.forEach(e => {
-      if (!incomeByCategory[e.category]) incomeByCategory[e.category] = 0;
-      incomeByCategory[e.category] += e.amount;
-    });
-    let totalIncome = 0;
-    Object.entries(incomeByCategory).sort((a,b) => b[1] - a[1]).forEach(([cat, amt]) => {
-      report += `  ・${cat}: ¥${amt.toLocaleString()}\n`;
-      totalIncome += amt;
-    });
-    report += `  ────────────────\n`;
-    report += `  売上合計: ¥${totalIncome.toLocaleString()}\n`;
-    
-    report += `\n【経費】\n`;
-    const expenseByCategory = {};
-    companyExpense.forEach(e => {
-      if (!expenseByCategory[e.category]) expenseByCategory[e.category] = 0;
-      expenseByCategory[e.category] += e.amount;
-    });
-    let totalExpense = 0;
-    Object.entries(expenseByCategory).sort((a,b) => b[1] - a[1]).forEach(([cat, amt]) => {
-      report += `  ・${cat}: ¥${amt.toLocaleString()}\n`;
-      totalExpense += amt;
-    });
-    report += `  ────────────────\n`;
-    report += `  経費合計: ¥${totalExpense.toLocaleString()}\n`;
-    
-    const profit = totalIncome - totalExpense;
-    report += `\n【所得】\n`;
-    report += `  売上 ¥${totalIncome.toLocaleString()} − 経費 ¥${totalExpense.toLocaleString()}\n`;
-    report += `  ＝ ¥${profit.toLocaleString()}\n`;
-    
-    // 月別推移
-    report += `\n【月別売上推移】\n`;
-    for (let m = 1; m <= 12; m++) {
-      const monthIncome = companyIncome.filter(e => new Date(e.date).getMonth() + 1 === m).reduce((s, e) => s + e.amount, 0);
-      if (monthIncome > 0) {
-        report += `  ${m}月: ¥${monthIncome.toLocaleString()}\n`;
-      }
-    }
+
+  let isFirst = true;
+
+  if (tabChoice === 'company' || tabChoice === 'all') {
+    report += generateTabReport('company', state.tabNames.company, state.entries.company, year);
+    isFirst = false;
   }
-  
-  // 個人タブの出力
-  if (tabChoice === 'personal' || tabChoice === 'both') {
-    if (tabChoice === 'both') {
-      report += `\n${'='.repeat(40)}\n`;
-    }
-    
-    const personalEntries = state.entries.personal.filter(e => new Date(e.date).getFullYear() === year);
-    const personalIncome = personalEntries.filter(e => e.type === 'income');
-    const personalExpense = personalEntries.filter(e => e.type === 'expense');
-    
-    report += `\n■ ${state.tabNames.personal}\n`;
-    report += `-`.repeat(40) + `\n`;
-    
-    report += `\n【収入】\n`;
-    const pIncomeByCategory = {};
-    personalIncome.forEach(e => {
-      if (!pIncomeByCategory[e.category]) pIncomeByCategory[e.category] = 0;
-      pIncomeByCategory[e.category] += e.amount;
-    });
-    let pTotalIncome = 0;
-    Object.entries(pIncomeByCategory).sort((a,b) => b[1] - a[1]).forEach(([cat, amt]) => {
-      report += `  ・${cat}: ¥${amt.toLocaleString()}\n`;
-      pTotalIncome += amt;
-    });
-    report += `  ────────────────\n`;
-    report += `  収入合計: ¥${pTotalIncome.toLocaleString()}\n`;
-    
-    report += `\n【支出】\n`;
-    const pExpenseByCategory = {};
-    personalExpense.forEach(e => {
-      if (!pExpenseByCategory[e.category]) pExpenseByCategory[e.category] = 0;
-      pExpenseByCategory[e.category] += e.amount;
-    });
-    let pTotalExpense = 0;
-    Object.entries(pExpenseByCategory).sort((a,b) => b[1] - a[1]).forEach(([cat, amt]) => {
-      report += `  ・${cat}: ¥${amt.toLocaleString()}\n`;
-      pTotalExpense += amt;
-    });
-    report += `  ────────────────\n`;
-    report += `  支出合計: ¥${pTotalExpense.toLocaleString()}\n`;
-    
-    report += `\n【収支】\n`;
-    report += `  ＝ ¥${(pTotalIncome - pTotalExpense).toLocaleString()}\n`;
-    
-    // 月別推移
-    report += `\n【月別収入推移】\n`;
-    for (let m = 1; m <= 12; m++) {
-      const monthIncome = personalIncome.filter(e => new Date(e.date).getMonth() + 1 === m).reduce((s, e) => s + e.amount, 0);
-      if (monthIncome > 0) {
-        report += `  ${m}月: ¥${monthIncome.toLocaleString()}\n`;
-      }
-    }
+
+  if ((tabChoice === 'personal' || tabChoice === 'all') && state.tabVisibility.personal) {
+    if (!isFirst) report += `\n${'='.repeat(40)}\n`;
+    report += generateTabReport('personal', state.tabNames.personal, state.entries.personal, year);
+    isFirst = false;
   }
-  
+
+  if ((tabChoice === 'tab3' || tabChoice === 'all') && state.tabVisibility.tab3) {
+    if (!isFirst) report += `\n${'='.repeat(40)}\n`;
+    report += generateTabReport('tab3', state.tabNames.tab3, state.entries.tab3, year);
+  }
+
   report += `\n${'='.repeat(40)}\n`;
   report += `\n※このレポートをClaudeに貼り付けて\n  確定申告の相談ができます！\n`;
-  
+
   document.getElementById('report-text').value = report;
   document.getElementById('report-modal').classList.add('show');
 }
