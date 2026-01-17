@@ -1881,7 +1881,6 @@ function updateTabNames() {
         document.querySelectorAll('.account-tab').forEach(t => t.classList.toggle('active', t.dataset.account === tabKey));
         renderCalendar();
         renderGraph();
-        renderSavings();
         renderSettings();
         updateCategorySelect();
         saveData();
