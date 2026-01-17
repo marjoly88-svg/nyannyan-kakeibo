@@ -435,6 +435,19 @@ body {
   accent-color: var(--accent);
   cursor: pointer;
 }
+.tab-setting-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.tab-setting-row:last-child { border-bottom: none; }
+.tab-setting-row.dragging { opacity: 0.5; background: var(--accent-subtle); }
+.tab-setting-row.drag-over { border-top: 2px solid var(--accent); }
+.tab-setting-row .drag-handle { color: var(--fg-muted); cursor: grab; font-size: 16px; }
+.tab-setting-row .drag-handle:active { cursor: grabbing; }
+.tab-setting-row input[type="text"] { flex: 1; }
 .settings-section .input-row input[type="text"] {
   background: var(--bg-muted);
   border: 1px solid var(--border);
@@ -1134,18 +1147,7 @@ body {
         </div>
         <div class="settings-section">
           <h3>タブ名設定</h3>
-          <div class="input-row">
-            <span class="label">タブ1</span>
-            <input type="text" id="tab1-name" placeholder="会社">
-          </div>
-          <div class="input-row">
-            <label class="tab-checkbox"><input type="checkbox" id="tab2-visible" checked><span class="label">タブ2</span></label>
-            <input type="text" id="tab2-name" placeholder="個人">
-          </div>
-          <div class="input-row">
-            <label class="tab-checkbox"><input type="checkbox" id="tab3-visible"><span class="label">タブ3</span></label>
-            <input type="text" id="tab3-name" placeholder="タブ3">
-          </div>
+          <div id="tab-settings-container"></div>
         </div>
         <div class="settings-section">
           <h3>収入カテゴリー</h3>
@@ -1281,6 +1283,7 @@ let state = {
   categories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)),
   tabNames: { company: '会社', personal: '家計簿', tab3: 'タブ3' },
   tabVisibility: { personal: true, tab3: false },
+  tabOrder: ['company', 'personal', 'tab3'],
   theme: 'pink',
   savings: { company: {}, personal: {}, tab3: {} }
 };
@@ -1337,6 +1340,7 @@ function loadDataFromObject(data) {
   state.tabNames = data.tabNames || { company: '会社', personal: '家計簿', tab3: 'タブ3' };
   if (!state.tabNames.tab3) state.tabNames.tab3 = 'タブ3';
   state.tabVisibility = data.tabVisibility || { personal: true, tab3: false };
+  state.tabOrder = data.tabOrder || ['company', 'personal', 'tab3'];
   state.theme = data.theme || 'pink';
   state.savings = data.savings || { company: {}, personal: {}, tab3: {} };
   if (!state.savings.tab3) state.savings.tab3 = {};
@@ -1351,7 +1355,7 @@ function loadData() {
 }
 
 function getDataObject() {
-  return { entries: state.entries, categories: state.categories, tabNames: state.tabNames, tabVisibility: state.tabVisibility, theme: state.theme, savings: state.savings, currentAccount: state.currentAccount };
+  return { entries: state.entries, categories: state.categories, tabNames: state.tabNames, tabVisibility: state.tabVisibility, tabOrder: state.tabOrder, theme: state.theme, savings: state.savings, currentAccount: state.currentAccount };
 }
 
 function saveData() {
@@ -1638,20 +1642,30 @@ function updateCategorySelect() {
   });
 }
 function updateTabNames() {
-  const tabs = document.querySelectorAll('.account-tab');
-  tabs[0].textContent = state.tabNames.company;
-  tabs[1].textContent = state.tabNames.personal;
-  tabs[2].textContent = state.tabNames.tab3;
-  tabs[1].style.display = state.tabVisibility.personal ? '' : 'none';
-  tabs[2].style.display = state.tabVisibility.tab3 ? '' : 'none';
-  document.getElementById('tab1-name').value = state.tabNames.company;
-  document.getElementById('tab2-name').value = state.tabNames.personal;
-  document.getElementById('tab3-name').value = state.tabNames.tab3;
-  document.getElementById('tab2-visible').checked = state.tabVisibility.personal;
-  document.getElementById('tab3-visible').checked = state.tabVisibility.tab3;
+  const container = document.querySelector('.account-tabs');
+  container.innerHTML = '';
+  state.tabOrder.forEach(tabKey => {
+    const isVisible = tabKey === 'company' || state.tabVisibility[tabKey];
+    if (isVisible) {
+      const btn = document.createElement('button');
+      btn.className = 'account-tab' + (tabKey === state.currentAccount ? ' active' : '');
+      btn.dataset.account = tabKey;
+      btn.textContent = state.tabNames[tabKey];
+      btn.addEventListener('click', () => {
+        state.currentAccount = tabKey;
+        document.querySelectorAll('.account-tab').forEach(t => t.classList.toggle('active', t.dataset.account === tabKey));
+        renderCalendar();
+        renderGraph();
+        renderSavings();
+        updateCategorySelect();
+        saveData();
+      });
+      container.appendChild(btn);
+    }
+  });
   if (!state.tabVisibility[state.currentAccount] && state.currentAccount !== 'company') {
-    state.currentAccount = 'company';
-    tabs.forEach(t => t.classList.toggle('active', t.dataset.account === 'company'));
+    state.currentAccount = state.tabOrder.find(t => t === 'company' || state.tabVisibility[t]) || 'company';
+    document.querySelectorAll('.account-tab').forEach(t => t.classList.toggle('active', t.dataset.account === state.currentAccount));
     renderCalendar();
     renderGraph();
     updateCategorySelect();
@@ -2116,44 +2130,88 @@ function renderSettings() {
       updateCategorySelect();
     });
   });
-  document.getElementById('tab1-name').value = state.tabNames.company;
-  document.getElementById('tab2-name').value = state.tabNames.personal;
-  document.getElementById('tab3-name').value = state.tabNames.tab3;
-  document.getElementById('tab2-visible').checked = state.tabVisibility.personal;
-  document.getElementById('tab3-visible').checked = state.tabVisibility.tab3;
-  document.getElementById('tab1-name').onchange = (e) => {
-    state.tabNames.company = e.target.value || '会社';
-    saveData();
-    updateTabNames();
-    updateReportTabSelect();
-  };
-  document.getElementById('tab2-name').onchange = (e) => {
-    state.tabNames.personal = e.target.value || '個人';
-    saveData();
-    updateTabNames();
-    updateReportTabSelect();
-  };
-  document.getElementById('tab3-name').onchange = (e) => {
-    state.tabNames.tab3 = e.target.value || 'タブ3';
-    saveData();
-    updateTabNames();
-    updateReportTabSelect();
-  };
-  document.getElementById('tab2-visible').onchange = (e) => {
-    state.tabVisibility.personal = e.target.checked;
-    saveData();
-    updateTabNames();
-    updateReportTabSelect();
-  };
-  document.getElementById('tab3-visible').onchange = (e) => {
-    state.tabVisibility.tab3 = e.target.checked;
-    saveData();
-    updateTabNames();
-    updateReportTabSelect();
-  };
+  renderTabSettings();
+}
+function renderTabSettings() {
+  const container = document.getElementById('tab-settings-container');
+  container.innerHTML = '';
+  const defaultNames = { company: '会社', personal: '個人', tab3: 'タブ3' };
+  state.tabOrder.forEach((tabKey, idx) => {
+    const row = document.createElement('div');
+    row.className = 'tab-setting-row';
+    row.draggable = true;
+    row.dataset.tabKey = tabKey;
+    row.dataset.index = idx;
+    const isFirst = tabKey === 'company';
+    row.innerHTML = `
+      <span class="drag-handle">≡</span>
+      ${isFirst ? '<span class="label" style="width:70px;">タブ1</span>' : `<label class="tab-checkbox" style="width:70px;"><input type="checkbox" class="tab-visible-cb" data-tab="${tabKey}" ${state.tabVisibility[tabKey] ? 'checked' : ''}><span class="label">タブ${idx+1}</span></label>`}
+      <input type="text" class="tab-name-input" data-tab="${tabKey}" value="${state.tabNames[tabKey]}" placeholder="${defaultNames[tabKey]}">
+    `;
+    container.appendChild(row);
+  });
+  setupTabSettingsDragDrop();
+  document.querySelectorAll('.tab-name-input').forEach(input => {
+    input.onchange = (e) => {
+      const tabKey = input.dataset.tab;
+      const defaultNames = { company: '会社', personal: '個人', tab3: 'タブ3' };
+      state.tabNames[tabKey] = e.target.value || defaultNames[tabKey];
+      saveData();
+      updateTabNames();
+      updateReportTabSelect();
+    };
+  });
+  document.querySelectorAll('.tab-visible-cb').forEach(cb => {
+    cb.onchange = (e) => {
+      const tabKey = cb.dataset.tab;
+      state.tabVisibility[tabKey] = e.target.checked;
+      saveData();
+      updateTabNames();
+      updateReportTabSelect();
+    };
+  });
+}
+let draggedTabRow = null;
+function setupTabSettingsDragDrop() {
+  document.querySelectorAll('.tab-setting-row').forEach(row => {
+    row.addEventListener('dragstart', (e) => {
+      draggedTabRow = row;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      document.querySelectorAll('.tab-setting-row').forEach(el => el.classList.remove('drag-over'));
+      draggedTabRow = null;
+    });
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (draggedTabRow && draggedTabRow !== row) {
+        e.dataTransfer.dropEffect = 'move';
+        row.classList.add('drag-over');
+      }
+    });
+    row.addEventListener('dragleave', () => {
+      row.classList.remove('drag-over');
+    });
+    row.addEventListener('drop', (e) => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      if (draggedTabRow && draggedTabRow !== row) {
+        const fromIdx = parseInt(draggedTabRow.dataset.index);
+        const toIdx = parseInt(row.dataset.index);
+        const [moved] = state.tabOrder.splice(fromIdx, 1);
+        state.tabOrder.splice(toIdx, 0, moved);
+        saveData();
+        renderTabSettings();
+        updateTabNames();
+        showToast('タブの順番を変更しました');
+      }
+    });
+  });
 }
 function exportData() {
-  const data = JSON.stringify({ entries: state.entries, categories: state.categories, tabNames: state.tabNames, tabVisibility: state.tabVisibility, theme: state.theme, savings: state.savings }, null, 2);
+  const data = JSON.stringify({ entries: state.entries, categories: state.categories, tabNames: state.tabNames, tabVisibility: state.tabVisibility, tabOrder: state.tabOrder, theme: state.theme, savings: state.savings }, null, 2);
   const blob = new Blob([data], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2178,6 +2236,7 @@ function importData(e) {
         state.tabNames = data.tabNames || { company: '会社', personal: '家計簿', tab3: 'タブ3' };
         if (!state.tabNames.tab3) state.tabNames.tab3 = 'タブ3';
         state.tabVisibility = data.tabVisibility || { personal: true, tab3: false };
+        state.tabOrder = data.tabOrder || ['company', 'personal', 'tab3'];
         state.theme = data.theme || 'pink';
         state.savings = data.savings || { company: {}, personal: {}, tab3: {} };
         if (!state.savings.tab3) state.savings.tab3 = {};
