@@ -1348,6 +1348,8 @@ body {
             <button class="theme-btn" data-theme="black"><span class="theme-color" style="background: #3d3d3d;"></span>ブラック</button>
             <button class="theme-btn" data-theme="blue"><span class="theme-color" style="background: #4a90d9;"></span>ブルー</button>
             <button class="theme-btn" data-theme="purple"><span class="theme-color" style="background: #8b6eb8;"></span>パープル</button>
+            <button class="theme-btn" data-theme="ribbon1"><span class="theme-color" style="background: linear-gradient(135deg, #fff 50%, #e85a7e 50%);"></span>リボン1</button>
+            <button class="theme-btn" data-theme="ribbon2"><span class="theme-color" style="background: linear-gradient(135deg, #ffd6e7 50%, #f48fb1 50%);"></span>リボン2</button>
           </div>
         </div>
         <div class="settings-section">
@@ -1539,6 +1541,24 @@ const THEMES = {
     accentSubtle: 'rgba(139, 110, 184, 0.1)',
     bgBase: '#f8f5fa',
     bgMuted: '#f0eaf5'
+  },
+  ribbon1: {
+    accent: '#e85a7e',
+    accentHover: '#d64a6e',
+    accentLight: '#fce8ec',
+    accentSubtle: 'rgba(232, 90, 126, 0.1)',
+    bgBase: '#fffafa',
+    bgMuted: '#fff5f5',
+    bgPattern: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 20c-3-5-8-7-12-5s-5 7-2 11l14 14 14-14c3-4 2-9-2-11s-9 0-12 5z' fill='none' stroke='%23e8a0b0' stroke-width='1.5' opacity='0.4'/%3E%3Cpath d='M26 40l4 8 4-8M22 38c-2 4-6 6-6 6M38 38c2 4 6 6 6 6' fill='none' stroke='%23e8a0b0' stroke-width='1.5' opacity='0.4'/%3E%3C/svg%3E")`
+  },
+  ribbon2: {
+    accent: '#f48fb1',
+    accentHover: '#e57399',
+    accentLight: '#fce4ec',
+    accentSubtle: 'rgba(244, 143, 177, 0.12)',
+    bgBase: '#ffd6e7',
+    bgMuted: '#ffcadf',
+    bgPattern: `url("data:image/svg+xml,%3Csvg width='50' height='50' viewBox='0 0 50 50' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M25 15c-2.5-4-6.5-6-10-4s-4 6-1.5 9l11.5 12 11.5-12c2.5-3 1.5-7-1.5-9s-7.5 0-10 4z' fill='none' stroke='%23f8a0c0' stroke-width='1.2' opacity='0.5'/%3E%3Cpath d='M22 35l3 6 3-6M18 33c-1.5 3-5 5-5 5M32 33c1.5 3 5 5 5 5' fill='none' stroke='%23f8a0c0' stroke-width='1.2' opacity='0.5'/%3E%3C/svg%3E")`
   }
 };
 let currentUser = null;
@@ -2513,6 +2533,13 @@ function applyTheme(themeName) {
   root.style.setProperty('--accent-subtle', theme.accentSubtle);
   root.style.setProperty('--bg-base', theme.bgBase);
   root.style.setProperty('--bg-muted', theme.bgMuted);
+  const app = document.querySelector('.app');
+  if (theme.bgPattern) {
+    app.style.backgroundImage = theme.bgPattern;
+    app.style.backgroundSize = 'auto';
+  } else {
+    app.style.backgroundImage = 'none';
+  }
   document.querySelectorAll('.theme-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.theme === themeName);
   });
