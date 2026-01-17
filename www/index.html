@@ -470,6 +470,21 @@ body {
   flex-shrink: 0;
 }
 .edit-category-btn:hover { background: #fffacd; border-color: #ffd700; }
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 32px;
+  color: var(--fg-muted);
+  cursor: grab;
+  font-size: 16px;
+  user-select: none;
+  flex-shrink: 0;
+}
+.drag-handle:active { cursor: grabbing; }
+.category-edit-item.dragging { opacity: 0.5; background: var(--accent-subtle); }
+.category-edit-item.drag-over { border-top: 2px solid var(--accent); }
 .category-edit-item-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
 .category-edit-item-left span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .add-category { display: flex; gap: 8px; margin-top: 12px; }
@@ -1976,6 +1991,47 @@ function drawPieChart(data) {
   ctx.fillStyle = '#fff';
   ctx.fill();
 }
+let draggedItem = null;
+function setupCategoryDragDrop() {
+  document.querySelectorAll('.category-edit-item').forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+      draggedItem = item;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      document.querySelectorAll('.category-edit-item').forEach(el => el.classList.remove('drag-over'));
+      draggedItem = null;
+    });
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (draggedItem && draggedItem !== item && draggedItem.dataset.type === item.dataset.type) {
+        e.dataTransfer.dropEffect = 'move';
+        item.classList.add('drag-over');
+      }
+    });
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drag-over');
+    });
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      item.classList.remove('drag-over');
+      if (draggedItem && draggedItem !== item && draggedItem.dataset.type === item.dataset.type) {
+        const type = draggedItem.dataset.type;
+        const fromIdx = parseInt(draggedItem.dataset.index);
+        const toIdx = parseInt(item.dataset.index);
+        const cats = state.categories[state.currentAccount][type];
+        const [moved] = cats.splice(fromIdx, 1);
+        cats.splice(toIdx, 0, moved);
+        saveData();
+        renderSettings();
+        updateCategorySelect();
+        showToast('カテゴリーの順番を変更しました');
+      }
+    });
+  });
+}
 function renderSettings() {
   ['income', 'expense', 'savings'].forEach(type => {
     const container = document.getElementById(`${type}-categories`);
@@ -1984,10 +2040,14 @@ function renderSettings() {
     cats.forEach((cat, idx) => {
       const item = document.createElement('div');
       item.className = 'category-edit-item';
-      item.innerHTML = `<div class="category-edit-item-left"><button class="edit-category-btn" data-type="${type}" data-index="${idx}">⭐</button><span>${cat}</span></div><button class="delete-category-btn" data-type="${type}" data-index="${idx}">×</button>`;
+      item.draggable = true;
+      item.dataset.type = type;
+      item.dataset.index = idx;
+      item.innerHTML = `<div class="category-edit-item-left"><span class="drag-handle">≡</span><button class="edit-category-btn" data-type="${type}" data-index="${idx}">⭐</button><span>${cat}</span></div><button class="delete-category-btn" data-type="${type}" data-index="${idx}">×</button>`;
       container.appendChild(item);
     });
   });
+  setupCategoryDragDrop();
   document.querySelectorAll('.edit-category-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const type = btn.dataset.type;
