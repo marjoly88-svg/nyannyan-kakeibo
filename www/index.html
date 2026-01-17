@@ -455,6 +455,23 @@ body {
   transition: all var(--duration);
 }
 .delete-category-btn:hover { background: #fce8e8; border-color: var(--error); color: var(--error); }
+.edit-category-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all var(--duration);
+  flex-shrink: 0;
+}
+.edit-category-btn:hover { background: #fffacd; border-color: #ffd700; }
+.category-edit-item-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.category-edit-item-left span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .add-category { display: flex; gap: 8px; margin-top: 12px; }
 .add-category input {
   flex: 1;
@@ -1967,8 +1984,23 @@ function renderSettings() {
     cats.forEach((cat, idx) => {
       const item = document.createElement('div');
       item.className = 'category-edit-item';
-      item.innerHTML = `<span>${cat}</span><button class="delete-category-btn" data-type="${type}" data-index="${idx}">×</button>`;
+      item.innerHTML = `<div class="category-edit-item-left"><button class="edit-category-btn" data-type="${type}" data-index="${idx}">⭐</button><span>${cat}</span></div><button class="delete-category-btn" data-type="${type}" data-index="${idx}">×</button>`;
       container.appendChild(item);
+    });
+  });
+  document.querySelectorAll('.edit-category-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const type = btn.dataset.type;
+      const index = parseInt(btn.dataset.index);
+      const currentName = state.categories[state.currentAccount][type][index];
+      const newName = prompt('カテゴリー名を入力してください', currentName);
+      if (newName && newName.trim() && newName !== currentName) {
+        state.categories[state.currentAccount][type][index] = newName.trim();
+        saveData();
+        renderSettings();
+        updateCategorySelect();
+        showToast('カテゴリー名を変更しました');
+      }
     });
   });
   document.querySelectorAll('.delete-category-btn').forEach(btn => {
