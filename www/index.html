@@ -423,31 +423,111 @@ body {
 .settings-section .input-row {
   padding: 12px 0;
 }
-.tab-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-.tab-checkbox input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
 .tab-setting-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border);
+  gap: var(--space-3);
+  padding: var(--space-3);
+  margin-bottom: var(--space-2);
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: all var(--duration) var(--ease);
 }
-.tab-setting-row:last-child { border-bottom: none; }
-.tab-setting-row.dragging { opacity: 0.5; background: var(--accent-subtle); }
-.tab-setting-row.drag-over { border-top: 2px solid var(--accent); }
-.tab-setting-row .drag-handle { color: var(--fg-muted); cursor: grab; font-size: 16px; }
-.tab-setting-row .drag-handle:active { cursor: grabbing; }
-.tab-setting-row input[type="text"] { flex: 1; }
+.tab-setting-row:last-child { margin-bottom: 0; }
+.tab-setting-row.dragging {
+  opacity: 0.6;
+  background: var(--accent-subtle);
+  box-shadow: var(--shadow-md);
+}
+.tab-setting-row.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+.tab-setting-row .drag-handle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--fg-muted);
+  cursor: grab;
+  font-size: 14px;
+  transition: all var(--duration) var(--ease);
+  flex-shrink: 0;
+}
+.tab-setting-row .drag-handle-btn:hover {
+  background: var(--bg-muted);
+  color: var(--fg-secondary);
+}
+.tab-setting-row .drag-handle-btn:active { cursor: grabbing; }
+.tab-setting-row .tab-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-secondary);
+  min-width: 48px;
+}
+.tab-setting-row input[type="text"] {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fg-primary);
+  outline: none;
+  transition: all var(--duration) var(--ease);
+}
+.tab-setting-row input[type="text"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+.tab-toggle {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.tab-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.tab-toggle .toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  transition: all var(--duration) var(--ease);
+}
+.tab-toggle .toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 2px;
+  bottom: 2px;
+  background: var(--bg-surface);
+  border-radius: 50%;
+  box-shadow: var(--shadow);
+  transition: all var(--duration) var(--ease);
+}
+.tab-toggle input:checked + .toggle-slider {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.tab-toggle input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+}
 .settings-section .input-row input[type="text"] {
   background: var(--bg-muted);
   border: 1px solid var(--border);
@@ -460,56 +540,83 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 4px;
-  border-bottom: 1px solid var(--border);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: all var(--duration) var(--ease);
 }
-.category-edit-item:last-child { border-bottom: none; }
-.category-edit-item span { font-size: 14px; font-weight: 600; color: var(--fg-primary); }
+.category-edit-item:last-child { margin-bottom: 0; }
+.category-edit-item:hover { background: var(--bg-surface); }
+.category-edit-item span { font-size: 14px; font-weight: 500; color: var(--fg-primary); }
 .delete-category-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: var(--bg-muted);
-  border: 1px solid var(--border);
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
   border-radius: var(--radius-sm);
-  color: var(--fg-muted);
-  font-size: 18px;
+  color: var(--fg-faint);
+  font-size: 16px;
   cursor: pointer;
-  transition: all var(--duration);
+  transition: all var(--duration) var(--ease);
 }
-.delete-category-btn:hover { background: #fce8e8; border-color: var(--error); color: var(--error); }
+.delete-category-btn:hover {
+  background: rgba(209, 77, 77, 0.1);
+  color: var(--error);
+}
 .edit-category-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: var(--bg-muted);
-  border: 1px solid var(--border);
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
   border-radius: var(--radius-sm);
-  font-size: 16px;
+  color: var(--fg-faint);
+  font-size: 14px;
   cursor: pointer;
-  transition: all var(--duration);
+  transition: all var(--duration) var(--ease);
   flex-shrink: 0;
 }
-.edit-category-btn:hover { background: #fffacd; border-color: #ffd700; }
-.drag-handle {
+.edit-category-btn:hover {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+.drag-handle-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 28px;
-  height: 32px;
+  height: 28px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   color: var(--fg-muted);
   cursor: grab;
-  font-size: 16px;
+  font-size: 12px;
   user-select: none;
   flex-shrink: 0;
+  transition: all var(--duration) var(--ease);
 }
-.drag-handle:active { cursor: grabbing; }
-.category-edit-item.dragging { opacity: 0.5; background: var(--accent-subtle); }
-.category-edit-item.drag-over { border-top: 2px solid var(--accent); }
+.drag-handle-btn:hover {
+  background: var(--bg-surface);
+  color: var(--fg-secondary);
+}
+.drag-handle-btn:active { cursor: grabbing; }
+.category-edit-item.dragging {
+  opacity: 0.6;
+  background: var(--accent-subtle);
+  border-radius: var(--radius-sm);
+}
+.category-edit-item.drag-over {
+  border-top: 2px solid var(--accent);
+  padding-top: 10px;
+}
 .category-edit-item-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
 .category-edit-item-left span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .add-category { display: flex; gap: 8px; margin-top: 12px; }
@@ -2100,7 +2207,7 @@ function renderSettings() {
       item.draggable = true;
       item.dataset.type = type;
       item.dataset.index = idx;
-      item.innerHTML = `<div class="category-edit-item-left"><span class="drag-handle">≡</span><button class="edit-category-btn" data-type="${type}" data-index="${idx}">⭐</button><span>${cat}</span></div><button class="delete-category-btn" data-type="${type}" data-index="${idx}">×</button>`;
+      item.innerHTML = `<div class="category-edit-item-left"><span class="drag-handle-btn">⋮⋮</span><button class="edit-category-btn" data-type="${type}" data-index="${idx}">✎</button><span>${cat}</span></div><button class="delete-category-btn" data-type="${type}" data-index="${idx}">×</button>`;
       container.appendChild(item);
     });
   });
@@ -2144,8 +2251,8 @@ function renderTabSettings() {
     row.dataset.index = idx;
     const isFirst = tabKey === 'company';
     row.innerHTML = `
-      <span class="drag-handle">≡</span>
-      ${isFirst ? '<span class="label" style="width:70px;">タブ1</span>' : `<label class="tab-checkbox" style="width:70px;"><input type="checkbox" class="tab-visible-cb" data-tab="${tabKey}" ${state.tabVisibility[tabKey] ? 'checked' : ''}><span class="label">タブ${idx+1}</span></label>`}
+      <span class="drag-handle-btn">⋮⋮</span>
+      ${isFirst ? '' : `<label class="tab-toggle"><input type="checkbox" class="tab-visible-cb" data-tab="${tabKey}" ${state.tabVisibility[tabKey] ? 'checked' : ''}><span class="toggle-slider"></span></label>`}
       <input type="text" class="tab-name-input" data-tab="${tabKey}" value="${state.tabNames[tabKey]}" placeholder="${defaultNames[tabKey]}">
     `;
     container.appendChild(row);
