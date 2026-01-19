@@ -2041,7 +2041,8 @@ function renderDailyList(entries) {
       const item = document.createElement('div');
       item.className = 'daily-item';
       const amountDisplay = entry.type === 'expense' ? `-${formatCurrency(entry.amount)}` : formatCurrency(entry.amount);
-      item.innerHTML = `<div class="daily-item-left"><div class="daily-item-icon" style="background: ${COLORS[idx % COLORS.length]}"></div><span class="daily-item-category">${entry.category}</span></div><span class="daily-item-amount ${entry.type}">${amountDisplay}</span>`;
+      const memoDisplay = entry.memo ? `（${entry.memo}）` : '';
+      item.innerHTML = `<div class="daily-item-left"><div class="daily-item-icon" style="background: ${COLORS[idx % COLORS.length]}"></div><span class="daily-item-category">${entry.category}${memoDisplay}</span></div><span class="daily-item-amount ${entry.type}">${amountDisplay}</span>`;
       let pressTimer;
       item.addEventListener('mousedown', () => { pressTimer = setTimeout(() => { deleteEntry(entry.id); }, 800); });
       item.addEventListener('mouseup', () => clearTimeout(pressTimer));
