@@ -1338,6 +1338,13 @@ body {
           </div>
           <div class="savings-month-list" id="savings-month-list"></div>
         </div>
+        <div class="day-modal" id="category-modal">
+          <div class="day-modal-content">
+            <div class="day-modal-header" id="category-modal-title">カテゴリ名</div>
+            <div class="day-modal-list" id="category-modal-list"></div>
+            <button class="day-modal-btn cancel-btn" id="category-modal-close">閉じる</button>
+          </div>
+        </div>
       </div>
       <div class="screen" id="settings-screen">
         <h2 class="settings-title">設定</h2>
@@ -1882,6 +1889,8 @@ function setupEventListeners() {
   document.getElementById('edit-category-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveCategoryEdit(); if (e.key === 'Escape') closeCategoryEditModal(); });
   document.getElementById('modal-cancel').addEventListener('click', () => { document.getElementById('day-modal').classList.remove('show'); });
   document.getElementById('day-modal').addEventListener('click', (e) => { if (e.target.id === 'day-modal') document.getElementById('day-modal').classList.remove('show'); });
+  document.getElementById('category-modal-close').addEventListener('click', () => { document.getElementById('category-modal').classList.remove('show'); });
+  document.getElementById('category-modal').addEventListener('click', (e) => { if (e.target.id === 'category-modal') document.getElementById('category-modal').classList.remove('show'); });
   document.getElementById('modal-new-entry').addEventListener('click', openNewEntryFromModal);
   document.querySelectorAll('.theme-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2273,9 +2282,37 @@ function renderGraph() {
   chartData.sort((a, b) => b.value - a.value).forEach(item => {
     const el = document.createElement('div');
     el.className = 'category-item';
+    el.style.cursor = 'pointer';
     el.innerHTML = `<div class="category-item-left"><div class="category-dot" style="background: ${item.color}"></div><span class="category-name">${item.name}</span></div><span class="category-amount">${formatCurrency(item.value)}</span>`;
+    el.addEventListener('click', () => openCategoryModal(item.name, filteredEntries));
     listContainer.appendChild(el);
   });
+}
+function openCategoryModal(categoryName, entries) {
+  const categoryEntries = entries.filter(e => e.category === categoryName);
+  document.getElementById('category-modal-title').textContent = categoryName;
+  const listContainer = document.getElementById('category-modal-list');
+  listContainer.innerHTML = '';
+
+  if (categoryEntries.length === 0) {
+    listContainer.innerHTML = '<div class="day-modal-empty">この月の記録はありません</div>';
+  } else {
+    categoryEntries.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(entry => {
+      const item = document.createElement('div');
+      item.className = 'day-modal-item';
+      const d = new Date(entry.date);
+      const dateStr = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+      const amountDisplay = entry.type === 'expense' ? `-${formatCurrency(entry.amount)}` : formatCurrency(entry.amount);
+      const memoDisplay = entry.memo ? `（${entry.memo}）` : '';
+      item.innerHTML = `
+        <div class="day-modal-item-left">
+          <span class="day-modal-item-category">${dateStr}${memoDisplay}</span>
+        </div>
+        <span class="day-modal-item-amount ${entry.type}">${amountDisplay}</span>`;
+      listContainer.appendChild(item);
+    });
+  }
+  document.getElementById('category-modal').classList.add('show');
 }
 function drawPieChart(data) {
   const canvas = document.getElementById('pie-chart');
