@@ -2290,7 +2290,9 @@ function renderGraph() {
     listContainer.appendChild(el);
   });
 }
+let selectedCategoryName = null;
 function openCategoryModal(categoryName, entries) {
+  selectedCategoryName = categoryName;
   const categoryEntries = entries.filter(e => e.category === categoryName);
   document.getElementById('category-modal-title').textContent = categoryName;
   const listContainer = document.getElementById('category-modal-list');
@@ -2310,11 +2312,33 @@ function openCategoryModal(categoryName, entries) {
         <div class="day-modal-item-left">
           <span class="day-modal-item-category">${dateStr}${memoDisplay}</span>
         </div>
-        <span class="day-modal-item-amount ${entry.type}">${amountDisplay}</span>`;
+        <span class="day-modal-item-amount ${entry.type}">${amountDisplay}</span>
+        <button type="button" class="day-modal-delete" data-id="${entry.id}">×</button>`;
       listContainer.appendChild(item);
     });
   }
+
+  // イベント委任で削除ボタンを処理
+  listContainer.onclick = function(e) {
+    const btn = e.target.closest('.day-modal-delete');
+    if (btn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = parseInt(btn.dataset.id);
+      deleteCategoryEntry(id);
+    }
+  };
+
   document.getElementById('category-modal').classList.add('show');
+}
+function deleteCategoryEntry(id) {
+  state.entries[state.currentAccount] = state.entries[state.currentAccount].filter(e => e.id !== id);
+  saveData();
+  renderGraph();
+  // モーダルを更新
+  const entries = state.entries[state.currentAccount];
+  openCategoryModal(selectedCategoryName, entries);
+  showToast('削除しました');
 }
 function drawPieChart(data) {
   const canvas = document.getElementById('pie-chart');
